@@ -23,6 +23,12 @@ contributions:
     - id: napari-labelprop.make_func_widget
       python_name: napari_labelprop._widget:example_function_widget
       title: Make example function widget 
+    - id: napari-labelprop.inference_widget
+      python_name: napari_labelprop._label_prop_widget:inference
+      title: Propagate labels from checkpoint
+    - id: napari-labelprop.training_widget
+      python_name: napari_labelprop._label_prop_widget:training
+      title: Training model to propagate labels
   readers:
     - command: napari-labelprop.get_reader
       accepts_directories: false
@@ -46,3 +52,9 @@ contributions:
     - command: napari-labelprop.make_func_widget
       autogenerate: true
       display_name: Example Function Widget 
+    - command: napari-labelprop.inference_widget
+      autogenerate: true
+      display_name: Inference
+    - command: napari-labelprop.training_widget
+      autogenerate: true
+      display_name:  Training
