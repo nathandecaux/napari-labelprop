@@ -73,8 +73,8 @@ class LabelPropDataModule(pl.LightningDataModule):
         else:
             img=self.img_path
             mask=self.mask_path
-        self.train_dataset=FullScan(img, mask,shape=self.shape,selected_slices=self.selected_slices,z_axis=self.z_axis)
-        self.val_dataset=FullScan(img, mask,shape=self.shape,selected_slices=None,z_axis=self.z_axis)
+        self.train_dataset=FullScan(img, mask,lab=self.lab,shape=self.shape,selected_slices=self.selected_slices,z_axis=self.z_axis)
+        self.val_dataset=FullScan(img, mask,lab=self.lab,shape=self.shape,selected_slices=None,z_axis=self.z_axis)
         self.test_dataset=self.train_dataset
 
     def train_dataloader(self,batch_size=None):

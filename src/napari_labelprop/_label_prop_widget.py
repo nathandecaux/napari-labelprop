@@ -41,14 +41,15 @@ def magic_widget(img_layer: "napari.layers.Image"):
 # Uses the `autogenerate: true` flag in the plugin manifest
 # to indicate it should be wrapped as a magicgui to autogenerate
 # a widget.
-def inference(image: "napari.types.ImageData", labels: "napari.types.LabelsData", checkpoint: "napari.types.Path", z_axis: int) -> "napari.types.LayerDataTuple":
+def inference(image: "napari.types.ImageData", labels: "napari.types.LabelsData", checkpoint: "napari.types.Path", z_axis: int, label : int) -> "napari.types.LayerDataTuple":
     """Generate thresholded image.
 
     This function will be turned into a widget using `autogenerate: true`.
     """
     print(labels.shape)
+    if label==0: label='all'
     Y_up, Y_down, Y_fused = propagate_from_ckpt(
-        image, labels, checkpoint, z_axis=z_axis)
+        image, labels, checkpoint, z_axis=z_axis,lab=label)
     return [((Y_up).astype(int), {'name': 'propagated_up'}, 'labels'), ((Y_down).astype(int), {'name': 'propagated_down'}, 'labels'), ((Y_fused).astype(int), {'name': 'propagated_fused'}, 'labels')]
 
 

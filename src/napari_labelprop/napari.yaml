@@ -32,7 +32,7 @@ contributions:
   readers:
     - command: napari-labelprop.get_reader
       accepts_directories: false
-      filename_patterns: ['*.npy'] 
+      filename_patterns: ['*.nii.gz'] 
   writers:
     - command: napari-labelprop.write_multiple
       layer_types: ['image*','labels*']

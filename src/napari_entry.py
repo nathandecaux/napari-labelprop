@@ -10,7 +10,7 @@ def resample(Y,size):
     return Y
 
 
-def propagate_from_ckpt(img,mask,checkpoint,shape=256,z_axis=2):
+def propagate_from_ckpt(img,mask,checkpoint,shape=256,z_axis=2,lab='all'):
 
     true_shape=img.shape
     shape=(shape,shape)
@@ -18,9 +18,9 @@ def propagate_from_ckpt(img,mask,checkpoint,shape=256,z_axis=2):
     n_classes=len(np.unique(mask))
     losses={'compo-reg-up':True,'compo-reg-down':True,'compo-dice-up':True,'compo-dice-down':True,'bidir-cons-reg':False,'bidir-cons-dice':False}
     model_PARAMS={'n_classes':n_classes,'way':'both','shape':shape,'selected_slices':None,'losses':losses,'by_composition':by_composition}
-
+    print('hey ho')
     #Dataloading
-    dm=LabelPropDataModule(img_path=img,mask_path=mask,lab='all',shape=shape,selected_slices=None,z_axis=z_axis)
+    dm=LabelPropDataModule(img_path=img,mask_path=mask,lab=lab,shape=shape,selected_slices=None,z_axis=z_axis)
 
     #Inference
     Y_up,Y_down,Y_fused=train.inference(datamodule=dm,model_PARAMS=model_PARAMS,ckpt=checkpoint)

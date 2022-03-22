@@ -10,7 +10,7 @@ import monai
 from copy import copy,deepcopy
 import medpy.metric as med
 from LabelProp import LabelProp
-
+import time
 def to_one_hot(Y,dim=0):
     return torch.moveaxis(F.one_hot(Y), -1, dim).float()
 
@@ -32,7 +32,9 @@ def get_chunks(Y):
             chunks.append(chunk)
             chunk=[i]
     return chunks
-  
+
+def binarize(Y,lab):
+    return torch.stack([1-Y[lab],Y[lab]],0)
 
 def remove_annotations(Y,selected_slices):
     if selected_slices!=None:
@@ -119,18 +121,24 @@ def propagate_labels(X,Y,model,model_down=None):
 def propagate_by_composition(X,Y,model):
     Y_up=torch.clone(Y)
     Y_down=torch.clone(Y)
+    n_classes=Y_up.shape[0]
     model.eval().to('cuda')
     model.freeze()
     fields_up,fields_down=get_successive_fields(X,model)
     X=X[0]
-    chunks=get_chunks(Y)
-    Y=Y.unsqueeze(0).to('cuda')
-    for chunk in chunks:
-        for i in list(range(*chunk))[1:]:
-            composed_field_up=model.compose_list(fields_up[chunk[0]:i]).to('cuda')
-            composed_field_down=model.compose_list(fields_down[i:chunk[1]][::-1]).to('cuda')
-            Y_up[:,i]=model.apply_deform(Y[:,:,chunk[0]],composed_field_up).cpu().detach()[0]
-            Y_down[:,i]=model.apply_deform(Y[:,:,chunk[1]],composed_field_down).cpu().detach()[0]
+    for lab in list(range(n_classes))[1:]:
+        print('label : ',lab)
+        chunks=get_chunks(binarize(Y,lab))
+        print('Chunks : ',chunks)
+        
+        for chunk in chunks:
+            for i in list(range(*chunk))[1:]:
+                composed_field_up=model.compose_list(fields_up[chunk[0]:i]).to('cuda')
+                composed_field_down=model.compose_list(fields_down[i:chunk[1]][::-1]).to('cuda')
+                Y_up[lab:lab+1,i]=model.apply_deform(Y[lab:lab+1,chunk[0]].unsqueeze(0).to('cuda'),composed_field_up).cpu().detach()[0]
+                Y_down[lab:lab+1,i]=model.apply_deform(Y[lab:lab+1,chunk[1]].unsqueeze(0).to('cuda'),composed_field_down).cpu().detach()[0]
+    Y_up[0]=(torch.sum(Y_up[1:],0)==0)*1.
+    Y_down[0]=(torch.sum(Y_down[1:],0)==0)*1.
     return Y_up,Y_down
 
 def compute_metrics(y_pred,y):
