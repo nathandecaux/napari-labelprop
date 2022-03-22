@@ -1,0 +1,9 @@
+site_name: napari-labelprop
+site_description: Label propagation through deep registration
+site_author: nathandecaux
+
+theme: readthedocs
+
+
+pages:
+- Home: index.md
