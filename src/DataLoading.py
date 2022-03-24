@@ -78,10 +78,10 @@ class LabelPropDataModule(pl.LightningDataModule):
         self.test_dataset=self.train_dataset
 
     def train_dataloader(self,batch_size=None):
-        return DataLoader(self.train_dataset, 1, num_workers=8,pin_memory=True)
+        return DataLoader(self.train_dataset, 1, num_workers=8,pin_memory=False)
 
     def val_dataloader(self):
-        return DataLoader(self.val_dataset, 1, num_workers=8,pin_memory=True)
+        return DataLoader(self.val_dataset, 1, num_workers=8,pin_memory=False)
     
     def test_dataloader(self):
-        return DataLoader(self.test_dataset, 1, num_workers=8, pin_memory=True)
+        return DataLoader(self.test_dataset, 1, num_workers=8, pin_memory=False)

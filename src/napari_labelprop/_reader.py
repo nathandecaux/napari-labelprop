@@ -80,7 +80,7 @@ def reader_function(path):
     # stack arrays into single array
     data = file.get_fdata()
 
-    add_kwargs={"name":str(path.split('/')[-1]).replace('nii.gz',''),"rotate":[[1.0, 0.0, 0.0], [0.0, 1.0 , 0.0],[0.0, 0.0 , 1.0]]}
+    add_kwargs={"name":str(path.split('/')[-1]).replace('nii.gz','')}
     print('coucou',file.get_data_dtype())
     if 'int' in str(file.get_data_dtype()) :
         layer_type='labels'

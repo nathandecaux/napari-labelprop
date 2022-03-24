@@ -15,7 +15,7 @@ contributions:
       python_name: napari_labelprop._sample_data:make_sample_data
       title: Load sample data from napari Label Propagation 
     - id: napari-labelprop.make_qwidget
-      python_name: napari_labelprop._widget:ExampleQWidget
+      python_name: napari_labelprop._label_prop_widget:TrucQWidget
       title: Make example QWidget
     - id: napari-labelprop.make_magic_widget
       python_name: napari_labelprop._widget:example_magic_widget
@@ -29,6 +29,9 @@ contributions:
     - id: napari-labelprop.training_widget
       python_name: napari_labelprop._label_prop_widget:training
       title: Training model to propagate labels
+    - id: napari-labelprop.filter_widget
+      python_name: napari_labelprop._label_prop_widget:filter_slices
+      title: Filtering label slices
   readers:
     - command: napari-labelprop.get_reader
       accepts_directories: false
@@ -56,5 +59,10 @@ contributions:
       autogenerate: true
       display_name: Inference
     - command: napari-labelprop.training_widget
-      autogenerate: true
+      # autogenerate: true
       display_name:  Training
+    - command: napari-labelprop.filter_widget
+      autogenerate: true
+      display_name:  Calculate
+
+

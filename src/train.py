@@ -141,6 +141,30 @@ def propagate_by_composition(X,Y,model):
     Y_down[0]=(torch.sum(Y_down[1:],0)==0)*1.
     return Y_up,Y_down
 
+
+def complex_propagation(X,Y,model):
+    Y_up=torch.clone(Y)
+    Y_down=torch.clone(Y)
+    n_classes=Y_up.shape[0]
+    model.eval().to('cuda')
+    model.freeze()
+    fields_up,fields_down=get_successive_fields(X,model)
+    X=X[0]
+    for lab in list(range(n_classes))[1:]:
+        print('label : ',lab)
+        chunks=get_chunks(binarize(Y,lab))
+        print('Chunks : ',chunks)
+        
+        for chunk in chunks:
+            for i in list(range(*chunk))[1:]:
+                composed_field_up=model.compose_list(fields_up[chunk[0]:i]).to('cuda')
+                composed_field_down=model.compose_list(fields_down[i:chunk[1]][::-1]).to('cuda')
+                Y_up[lab:lab+1,i]=model.apply_deform(Y[lab:lab+1,chunk[0]].unsqueeze(0).to('cuda'),composed_field_up).cpu().detach()[0]
+                Y_down[lab:lab+1,i]=model.apply_deform(Y[lab:lab+1,chunk[1]].unsqueeze(0).to('cuda'),composed_field_down).cpu().detach()[0]
+    Y_up[0]=(torch.sum(Y_up[1:],0)==0)*1.
+    Y_down[0]=(torch.sum(Y_down[1:],0)==0)*1.
+    return Y_up,Y_down
+
 def compute_metrics(y_pred,y):
     dices=[]
     hausses=[]
