@@ -10,6 +10,7 @@ import monai
 from copy import copy,deepcopy
 import medpy.metric as med
 from LabelProp import LabelProp
+from Pretraining_model import LabelProp as PretrainingModel
 import time
 def to_one_hot(Y,dim=0):
     return torch.moveaxis(F.one_hot(Y), -1, dim).float()
@@ -269,7 +270,7 @@ def train_and_eval(datamodule,model_PARAMS,max_epochs,ckpt=None):
     res['ckpt']=checkpoint_callback.best_model_path if ckpt==None else ckpt
     return model,Y_up,Y_down,res
 
-def train(datamodule,model_PARAMS,max_epochs,ckpt=None):
+def train(datamodule,model_PARAMS,max_epochs,ckpt=None,pretraining=False):
     # datetime object containing current date and time
     now = datetime.now()
     # dd/mm/YY H:M:S
@@ -282,13 +283,16 @@ def train(datamodule,model_PARAMS,max_epochs,ckpt=None):
         save_top_k=1,
         mode='max',
     )
-    model=LabelProp(**model_PARAMS)
+    if pretraining:
+        model=PretrainingModel(**model_PARAMS)
+    else:
+        model=LabelProp(**model_PARAMS)
     if ckpt!=None:
         model=model.load_from_checkpoint(ckpt,strict=False)
     trainer=Trainer(gpus=1,max_epochs=max_epochs,callbacks=checkpoint_callback)
     trainer.fit(model,datamodule)
     model=model.load_from_checkpoint(checkpoint_callback.best_model_path)
-    best_ckpt=checkpoint_callback.best_model_path if ckpt==None else ckpt
+    best_ckpt=checkpoint_callback.best_model_path
     return model,best_ckpt
 
 def inference(datamodule,model_PARAMS,ckpt):

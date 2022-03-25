@@ -35,7 +35,7 @@ def propagate_from_ckpt(img,mask,checkpoint,shape=304,z_axis=2,lab='all'):
     Y_fused=resample(Y_fused,true_shape)
     return Y_up.cpu().detach().numpy(),Y_down.cpu().detach().numpy(),Y_fused.cpu().detach().numpy()
 
-def train_and_infer(img,mask,pretrained_ckpt,shape,max_epochs,z_axis=2,output_dir='~/label_prop_checkpoints',name=''):
+def train_and_infer(img,mask,pretrained_ckpt,shape,max_epochs,z_axis=2,output_dir='~/label_prop_checkpoints',name='',pretraining=False):
     way='both'
     true_shape=img.shape
     shape=(shape,shape)
@@ -48,7 +48,7 @@ def train_and_infer(img,mask,pretrained_ckpt,shape,max_epochs,z_axis=2,output_di
     dm=LabelPropDataModule(img_path=img,mask_path=mask,lab='all',shape=shape,selected_slices=None,z_axis=z_axis)
 
     #Training and testing
-    trained_model,best_ckpt=train.train(datamodule=dm,model_PARAMS=model_PARAMS,max_epochs=max_epochs,ckpt=pretrained_ckpt)
+    trained_model,best_ckpt=train.train(datamodule=dm,model_PARAMS=model_PARAMS,max_epochs=max_epochs,ckpt=pretrained_ckpt,pretraining=pretraining)
     best_ckpt=str(best_ckpt)
     Y_up,Y_down,Y_fused=train.inference(datamodule=dm,model_PARAMS=model_PARAMS,ckpt=best_ckpt)
     if z_axis!=0:
@@ -61,5 +61,5 @@ def train_and_infer(img,mask,pretrained_ckpt,shape,max_epochs,z_axis=2,output_di
 
     if name=='': name=best_ckpt.split('/')[-1]
 
-    shutil.copy(best_ckpt,join(output_dir,f'{name.split(".ckpt")[-1]}.ckpt'))
+    shutil.copyfile(best_ckpt,join(output_dir,f'{name.split(".ckpt")[-1]}.ckpt'))
     return Y_up.cpu().detach().numpy(),Y_down.cpu().detach().numpy(),Y_fused.cpu().detach().numpy()

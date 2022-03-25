@@ -164,7 +164,7 @@ def inference(image: "napari.types.ImageData", labels: "napari.types.LabelsData"
 
 #@magicgui(call_button='run')#(checkpoint_output_dir={'mode': 'd'}, call_button='Run') , checkpoint_output_dir: pathlib.Path.home()
 @magic_factory(checkpoint_output_dir=dict(widget_type='FileEdit', mode='d'))
-def training(image: "napari.types.ImageData", labels: "napari.types.LabelsData", pretrained_checkpoint: "napari.types.Path" = '/home/', shape: int=256, z_axis: int=0, max_epochs: int=10,checkpoint_output_dir = '/home/',checkpoint_name='') -> "napari.types.LayerDataTuple":
+def training(image: "napari.types.ImageData", labels: "napari.types.LabelsData", pretrained_checkpoint: "napari.types.Path" = '/home/', shape: int=256, z_axis: int=0, max_epochs: int=10,checkpoint_output_dir = '/home/',checkpoint_name='',pretraining=False) -> "napari.types.LayerDataTuple":
     """Generate thresholded image.
 
     This function will be turned into a widget using `autogenerate: true`.
@@ -173,7 +173,7 @@ def training(image: "napari.types.ImageData", labels: "napari.types.LabelsData",
     else:
         shape=torch.load(pretrained_checkpoint)['hyper_parameters']['shape'][0]
     Y_up, Y_down, Y_fused = train_and_infer(
-        image, labels, pretrained_checkpoint,shape,max_epochs,z_axis,str(checkpoint_output_dir),checkpoint_name)
+        image, labels, pretrained_checkpoint,shape,max_epochs,z_axis,str(checkpoint_output_dir),checkpoint_name,pretraining)
     torch.cuda.empty_cache()
     return [((Y_up).astype(int), {'name': 'propagated_up'}, 'labels'), ((Y_down).astype(int), {'name': 'propagated_down'}, 'labels'), ((Y_fused).astype(int), {'name': 'propagated_fused'}, 'labels')]
 
