@@ -6,6 +6,7 @@ import torch
 from torch.nn import functional as func
 from os.path import join
 import shutil
+import Pyro5
 
 def resample(Y,size):
     Y=func.interpolate(Y[None,None,...]*1.,size,mode='nearest')[0,0]
@@ -63,3 +64,48 @@ def train_and_infer(img,mask,pretrained_ckpt,shape,max_epochs,z_axis=2,output_di
 
     shutil.copyfile(best_ckpt,join(output_dir,f'{name.split(".ckpt")[-1]}.ckpt'))
     return Y_up.cpu().detach().numpy(),Y_down.cpu().detach().numpy(),Y_fused.cpu().detach().numpy()
+
+def train_and_infer_pyro(shape,max_epochs,z_axis=2,output_dir='~/label_prop_checkpoints',name='',pretraining=False):
+    img=receive_object_from_client('img')
+    mask=receive_object_from_client('mask')
+    pretrained_ckpt=receive_object_from_client('pretrained_ckpt')
+    Y_up,Y_down,Y_fused=train_and_infer(img,mask,pretrained_ckpt,shape,max_epochs,z_axis,output_dir,name,pretraining)
+    send_object_to_server(Y_up,'Y_up')
+    send_object_to_server(Y_down,'Y_down')
+    send_object_to_server(Y_fused,'Y_fused')
+    
+
+def receive_object_from_client(name):
+    with Pyro5.locate_ns() as ns:
+        uri = ns.lookup(name)
+    with Pyro5.Proxy(uri) as proxy:
+        return proxy
+
+def send_object_to_server(obj,name):
+    with Pyro5.locate_ns() as ns:
+        with Pyro5.Proxy(ns.lookup('example.server')) as proxy:
+            proxy.register(obj,name)
+
+if __name__=='__main__':
+    import sys
+    if sys.argv[1]=='train':
+        img=receive_object_from_client('img')
+        mask=receive_object_from_client('mask')
+        pretrained_ckpt=receive_object_from_client('pretrained_ckpt')
+        shape=int(sys.argv[2])
+        max_epochs=int(sys.argv[3])
+        z_axis=int(sys.argv[4])
+        output_dir=sys.argv[5]
+        name=sys.argv[6]
+        pretraining=bool(sys.argv[7])
+        train_and_infer(img,mask,pretrained_ckpt,shape,max_epochs,z_axis,output_dir,name,pretraining)
+    elif sys.argv[1]=='infer':
+        shape=int(sys.argv[2])
+        max_epochs=int(sys.argv[3])
+        z_axis=int(sys.argv[4])
+        output_dir=sys.argv[5]
+        name=sys.argv[6]
+        pretraining=bool(sys.argv[7])
+        train_and_infer_pyro(shape,max_epochs,z_axis,output_dir,name,pretraining)
+    else:
+        raise ValueError('Invalid argument')
