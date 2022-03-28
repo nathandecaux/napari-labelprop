@@ -7,7 +7,9 @@
 [![codecov](https://codecov.io/gh/nathandecaux/napari-labelprop/branch/main/graph/badge.svg)](https://codecov.io/gh/nathandecaux/napari-labelprop)
 [![napari hub](https://img.shields.io/endpoint?url=https://api.napari-hub.org/shields/napari-labelprop)](https://napari-hub.org/plugins/napari-labelprop)
 
-Label propagation through deep registration
+Label propagation through deep registration.
+
+PS : "pretraining" option in the Training menu is still under development
 
 ----------------------------------
 

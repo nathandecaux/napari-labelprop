@@ -63,6 +63,6 @@ contributions:
       display_name:  Training
     - command: napari-labelprop.filter_widget
       autogenerate: true
-      display_name:  Calculate
+      display_name:  Remove annotated slices
 
 
