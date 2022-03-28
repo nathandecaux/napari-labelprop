@@ -42,6 +42,22 @@ Available functions are :
 
 PS : "pretraining" option in the Training menu is still under development
 
+Alternatively, napari and plugin widgets can be called directly from python scripts : 
+
+```python
+import nibabel as ni
+import napari
+
+viewer = napari.view_image(ni.load('images.nii.gz').get_fdata())
+viewer.add_labels(ni.load('segmentation.nii.gz').get_fdata().astype('uint8'))
+dw, my_widget = viewer.window.add_plugin_dock_widget('napari-labelprop', 'Training')
+my_widget.checkpoint_output_dir.value='~'
+my_widget.checkpoint_name.value='checkpoint_name'
+my_widget.z_axis.value=2
+my_widget.pretraining.value=False
+napari.run()
+```
+
 ## Contributing
 
 Contributions are very welcome. Tests can be run with [tox], please ensure
