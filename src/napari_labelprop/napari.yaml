@@ -48,13 +48,13 @@ contributions:
       display_name: napari Label Propagation
       key: unique_id.1 
   widgets:
-    - command: napari-labelprop.make_qwidget
-      display_name: Example QWidget
-    - command: napari-labelprop.make_magic_widget
-      display_name: Example Magic Widget
-    - command: napari-labelprop.make_func_widget
-      autogenerate: true
-      display_name: Example Function Widget 
+    # - command: napari-labelprop.make_qwidget
+    #   display_name: Example QWidget
+    # - command: napari-labelprop.make_magic_widget
+    #   display_name: Example Magic Widget
+    # - command: napari-labelprop.make_func_widget
+    #   autogenerate: true
+    #   display_name: Example Function Widget 
     - command: napari-labelprop.inference_widget
       autogenerate: true
       display_name: Inference

@@ -9,8 +9,6 @@
 
 Label propagation through deep registration.
 
-PS : "pretraining" option in the Training menu is still under development
-
 ----------------------------------
 
 This [napari] plugin was generated with [Cookiecutter] using [@napari]'s [cookiecutter-napari-plugin] template.
@@ -33,7 +31,16 @@ To install this project :
     pip install -e .
 
 
+## Usage
 
+Open napari from terminal and start using functions from 'napari-labelprop' plugin (Under Plugins scrolling menu). 
+
+Available functions are :
+- Inference : Propagate labels from trained weights (Pytorch checkpoint required)
+- Training : Start training from scratch or from a pretrained model
+- Remove annotated slices : (testing purpose) Function to remove every annotations except for declared slices. Kept slices must be declared in the 'slices' field using comma (',') separation (eg. 5,12,43)
+
+PS : "pretraining" option in the Training menu is still under development
 
 ## Contributing
 
