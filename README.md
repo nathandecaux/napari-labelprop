@@ -23,9 +23,12 @@ https://napari.org/plugins/stable/index.html
 
 ## Installation
 
-You can install `napari-labelprop` via [pip]:
+To install this project :
 
-    pip install napari-labelprop
+    pip install napari['all']
+    git clone https://github.com/nathandecaux/napari-labelprop.git
+    cd napari-labelprop
+    pip install -e .
 
 
 
