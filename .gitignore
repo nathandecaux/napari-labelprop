@@ -85,3 +85,5 @@ venv/
 
 checkpoints
 lightning_logs
+test_pyro.py
+test_pyro.py

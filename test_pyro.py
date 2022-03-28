@@ -1,19 +1,43 @@
-import Pyro5
-import Pyro5.api
-import nibabel as ni
 
-@Pyro5.api.expose
-class GreetingMaker(object):
-    def __init__(self, volume):
-        self.volume = volume
-    def get_shape(self):
-        return self.volume.shape
+from random import random
 
-vol=ni.load("/mnt/freebox/Segmentations/sub-09/ses-01/anat/sub-9_ses-1_T2.nii.gz").get_fdata()
-daemon = Pyro5.server.Daemon()         # make a Pyro daemon
-ns = Pyro5.api.locate_ns()             # find the name server
-uri = daemon.register(GreetingMaker(vol))   # register the greeting maker as a Pyro object
-ns.register("example.greeting", uri)   # register the object with a name in the name server
+from bokeh.layouts import column
+from bokeh.models import Button
+from bokeh.palettes import RdYlBu3
+from bokeh.plotting import figure, curdoc
 
-print("Ready.")
-daemon.requestLoop()                   # start the event loop of the server to wait for calls
+# create a plot and style its properties
+p = figure(x_range=(0, 100), y_range=(0, 100), toolbar_location=None)
+p.border_fill_color = 'black'
+p.background_fill_color = 'black'
+p.outline_line_color = None
+p.grid.grid_line_color = None
+
+# add a text renderer to the plot (no data yet)
+r = p.text(x=[], y=[], text=[], text_color=[], text_font_size="26px",
+           text_baseline="middle", text_align="center")
+
+i = 0
+
+ds = r.data_source
+
+# create a callback that adds a number in a random location
+def callback():
+    global i
+
+    # BEST PRACTICE --- update .data in one step with a new dict
+    new_data = dict()
+    new_data['x'] = ds.data['x'] + [random()*70 + 15]
+    new_data['y'] = ds.data['y'] + [random()*70 + 15]
+    new_data['text_color'] = ds.data['text_color'] + [RdYlBu3[i%3]]
+    new_data['text'] = ds.data['text'] + [str(i)]
+    ds.data = new_data
+
+    i = i + 1
+
+# add a button widget and configure with the call back
+button = Button(label="Press Me")
+button.on_click(callback)
+
+# put the button and plot in a layout and add to the document
+curdoc().add_root(column(button, p))
