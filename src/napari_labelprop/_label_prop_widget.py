@@ -12,7 +12,7 @@ from qtpy.QtWidgets import QWidget, QHBoxLayout, QPushButton,QVBoxLayout,QLabel,
 from qtpy.QtCore import Signal, QObject, QEvent
 from qtpy.QtCore import QEvent, Qt
 from napari.types import NewType
-from napari_entry import propagate_from_ckpt,train, train_and_infer
+from labelprop.napari_entry import propagate_from_ckpt,train, train_and_infer
 import sys
 import pathlib
 from magicgui.widgets import FileEdit
@@ -102,6 +102,8 @@ class FolderBrowser(QWidget):
         seach_field.returnPressed.connect(item_double_clicked)
         #results.itemDoubleClicked.connect(item_double_clicked)
         results.itemActivated.connect(item_double_clicked)
+
+
 
         self.setLayout(QVBoxLayout())
 
