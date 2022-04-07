@@ -118,17 +118,14 @@ def reader_function(path):
     # https://napari.org/docs/api/napari.components.html#module-napari.components.add_layers_mixin
     # see also: https://napari.org/tutorials/fundamentals/image
     add_kwargs = dict(
-        metadata=dict(affine=affine, header=header),
-        rgb=False,
-        scale=zooms,
-        translate=translate,
+        metadata=dict(affine=affine, header=header)
+        # rgb=False,
+        # scale=zooms,
+        # translate=translate,
         # contrast_limits=,
     )
-    if 'int' in str(header.get_data_dtype()):
-        layer_type='labels'
-        data=data.astype('uint8')
-    else:
-        layer_type = "image"  # optional, default is "image"
+
+    layer_type = "image"  # optional, default is "image"
     # TODO: potential kwargs to set for viewer.add_image
     #     contrast_limits kwarg based on info in image header?
     #          e.g. for NIFTI: nii.header._structarr['cal_min']

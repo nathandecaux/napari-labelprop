@@ -28,11 +28,9 @@ from skimage import data
 import nibabel as ni
 import napari
 
-
-# viewer = napari.view_path('/home/nathan/PLEX/norm/sub-002/img.nii.gz')
-viewer = napari.view_image(ni.load('/home/nathan/Datasets/PLEX/bids/norm/sub-005/img.nii.gz').get_fdata())
-
-viewer.add_labels(ni.load('/home/nathan/Datasets/PLEX/bids/norm/sub-005/mask.nii.gz').get_fdata().astype('uint8'))
+viewer = napari.Viewer()
+viewer.add_image(ni.load('img.nii.gz').get_fdata())
+viewer.add_labels(ni.load('mask.nii.gz').get_fdata().astype('uint8'))
 dw, my_widget = viewer.window.add_plugin_dock_widget('napari-labelprop', 'Training')
 my_widget.checkpoint_output_dir.value='/home/nathan/checkpoints/'
 my_widget.checkpoint_name.value='pretraining3'

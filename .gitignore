@@ -87,3 +87,5 @@ checkpoints
 lightning_logs
 test_pyro.py
 test_pyro.py
+*.nii.gz
+exemple.py

@@ -23,7 +23,6 @@ import fnmatch
 from magicgui.widgets import create_widget
 import torch
 from copy import deepcopy
-sys.path.append('../MiniLabelProp')
 
 class MyQLineEdit(QLineEdit):
     keyup = Signal()
@@ -161,7 +160,7 @@ def inference(image: "napari.types.ImageData", labels: "napari.types.LabelsData"
     shape=torch.load(checkpoint)['hyper_parameters']['shape'][0]
     if label==0: label='all'
     Y_up, Y_down, Y_fused = propagate_from_ckpt(
-        image, labels, checkpoint, z_axis=z_axis,lab=label,shape=shape)
+        image, labels, checkpoint, z_axis=z_axis,label=label,shape=shape)
     return [((Y_up).astype(int), {'name': 'propagated_up'}, 'labels'), ((Y_down).astype(int), {'name': 'propagated_down'}, 'labels'), ((Y_fused).astype(int), {'name': 'propagated_fused'}, 'labels')]
 
 #@magicgui(call_button='run')#(checkpoint_output_dir={'mode': 'd'}, call_button='Run') , checkpoint_output_dir: pathlib.Path.home()
