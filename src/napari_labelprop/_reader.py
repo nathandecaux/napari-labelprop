@@ -38,97 +38,54 @@ def napari_get_reader(path):
 
 def reader_function(path):
     """Take a path or list of paths and return a list of LayerData tuples.
+
     Readers are expected to return data as a list of tuples, where each tuple
     is (data, [add_kwargs, [layer_type]]), "add_kwargs" and "layer_type" are
     both optional.
+
     Parameters
     ----------
     path : str or list of str
         Path to file, or list of paths.
+
     Returns
     -------
     layer_data : list of tuples
         A list of LayerData tuples where each tuple in the list contains
         (data, metadata, layer_type), where data is a numpy array, metadata is
         a dict of keyword arguments for the corresponding viewer.add_* method
-        in napari, and layer_type is a lower-case string naming the type of
-        layer.
+        in napari, and layer_type is a lower-case string naming the type of layer.
         Both "meta", and "layer_type" are optional. napari will default to
         layer_type=="image" if not provided
     """
-    # handle both a string and a list of strings
-    paths = [path] if isinstance(path, str) else path
+    # # handle both a string and a list of strings
+    # paths = [path] if isinstance(path, str) else path
+    # # load all files into array
+    # arrays = [ni.load(_path).get_fdata() for _path in paths]
+    # # stack arrays into single array
+    # data = np.squeeze(np.stack(arrays))
 
-    n_spatial = 3
-    # note: we don't squeeze the data below, so 2D data will be 3D with 1 slice
-    if len(paths) > 1:
-        # load all files into a single array
-        objects = [ni.load(_path) for _path in paths]
-        header = objects[0].header
-        affine = objects[0].affine
-        if not all([_obj.shape == _obj[0].shape for _obj in objects]):
-            raise ValueError(
-                "all selected files must contain data of the same shape")
+    # # optional kwargs for the corresponding viewer.add_* method
+    # add_kwargs = {}
+    # print(str(data.dtype))
+    # if 'int' in str(data.dtype) :
+    #     layer_type='labels'
+    # else:
+    #     layer_type = "image"  # optional, default is "image"
+    # return [(data, add_kwargs, layer_type)]
+        # handle both a string and a list of strings
+    
+    # load all files into array
+    file = ni.load(path)
+    # stack arrays into single array
+    data = file.get_fdata()
 
-        arrays = [_obj.get_fdata() for _obj in objects]
-
-        # stack arrays into single array
-        data = np.stack(arrays)
+    add_kwargs={"name":str(path.split('/')[-1]).replace('nii.gz',''), 'metadata':dict(affine=file.affine, header=file.header)}
+    print('coucou',file.get_data_dtype())
+    if 'uint' in str(file.get_data_dtype()) :
+        layer_type='labels'
+        data=data.astype('uint8')
     else:
-        img = ni.load(paths[0])
-        header = img.header
-        affine = img.affine
-        data = img.get_fdata()  # keep this as dataobj or use get_fdata()?
-
-        spatial_axis_order = tuple(range(n_spatial))
-        if data.ndim > 3:
-            # niabel formats have spatial axes in the first 3 positions, but
-            # we need to move these to the last 3 for napari.
-            axes = tuple(range(data.ndim))
-            n_nonspatial = data.ndim - 3
-            new_axis_order = axes[-1:-n_nonspatial - 1:-1] + spatial_axis_order
-            data = data.transpose(new_axis_order)
-        else:
-            if spatial_axis_order != (0, 1, 2):
-                data = data.transpose(spatial_axis_order[:data.ndim])
-
-    try:
-        # only get zooms for the spatial axes
-        zooms = np.asarray(header.get_zooms())[:n_spatial]
-        if np.any(zooms == 0):
-            raise ValueError("invalid zoom = 0 found in header")
-        # normalize so values are all >= 1.0 (not strictly necessary)
-        # zooms = zooms / zooms.min()
-        zooms = tuple(zooms)
-        if data.ndim > 3:
-            zooms = (1.0, ) * (data.ndim - n_spatial) + zooms
-    except (AttributeError, ValueError):
-        zooms = (1.0, ) * data.ndim
-
-    apply_translation = False
-    if apply_translation:
-        translate = tuple(affine[:n_spatial, 3])
-        if data.ndim > 3:
-            # set translate = 0.0 on non-spatial dimensions
-            translate = (0.0,) * (data.ndim - n_spatial) + translate
-    else:
-        translate = (0.0,) * data.ndim
-
-    # optional kwargs for the corresponding viewer.add_* method
-    # https://napari.org/docs/api/napari.components.html#module-napari.components.add_layers_mixin
-    # see also: https://napari.org/tutorials/fundamentals/image
-    add_kwargs = dict(
-        metadata=dict(affine=affine, header=header)
-        # rgb=False,
-        # scale=zooms,
-        # translate=translate,
-        # contrast_limits=,
-    )
-
-    layer_type = "image"  # optional, default is "image"
-    # TODO: potential kwargs to set for viewer.add_image
-    #     contrast_limits kwarg based on info in image header?
-    #          e.g. for NIFTI: nii.header._structarr['cal_min']
-    #                          nii.header._structarr['cal_max']
-
+        layer_type = "image" 
+        data=data.astype('float32') # optional, default is "image"
     return [(data, add_kwargs, layer_type)]
