@@ -154,7 +154,7 @@ def magic_widget(img_layer: "napari.layers.Image"):
 # Uses the `autogenerate: true` flag in the plugin manifest
 # to indicate it should be wrapped as a magicgui to autogenerate
 # a widget.
-def inference(image: "napari.types.ImageData", labels: "napari.types.LabelsData", checkpoint: "napari.types.Path", z_axis: int, label : int) -> "napari.types.LayerDataTuple":
+def inference(image: "napari.layers.Image", labels: "napari.layers.Labels", checkpoint: "napari.types.Path", z_axis: int, label : int) -> "napari.types.LayerDataTuple":
     """Generate thresholded image.
 
     This function will be turned into a widget using `autogenerate: true`.
@@ -162,12 +162,12 @@ def inference(image: "napari.types.ImageData", labels: "napari.types.LabelsData"
     shape=torch.load(checkpoint)['hyper_parameters']['shape'][0]
     if label==0: label='all'
     Y_up, Y_down, Y_fused = propagate_from_ckpt(
-        image, labels, checkpoint, z_axis=z_axis,label=label,shape=shape)
-    return [((Y_up).astype(int), {'name': 'propagated_up'}, 'labels'), ((Y_down).astype(int), {'name': 'propagated_down'}, 'labels'), ((Y_fused).astype(int), {'name': 'propagated_fused'}, 'labels')]
+        image.data, labels.data, checkpoint, z_axis=z_axis,label=label,shape=shape)
+    return [((Y_up).astype('uint8'), {'name': 'propagated_up','metadata':labels.metadata}, 'labels'), ((Y_down).astype('uint8'), {'name': 'propagated_down','metadata':labels.metadata}, 'labels'), ((Y_fused).astype('uint8'), {'name': 'propagated_fused','metadata':labels.metadata}, 'labels')]
 
 #@magicgui(call_button='run')#(checkpoint_output_dir={'mode': 'd'}, call_button='Run') , checkpoint_output_dir: pathlib.Path.home()
 @magic_factory(checkpoint_output_dir=dict(widget_type='FileEdit', mode='d'))
-def training(image: "napari.types.ImageData", labels: "napari.types.LabelsData", pretrained_checkpoint: "napari.types.Path" = '/home/', shape: int=256, z_axis: int=0, max_epochs: int=10,checkpoint_output_dir = '/home/',checkpoint_name='',pretraining=False) -> "napari.types.LayerDataTuple":
+def training(image: "napari.layers.Image", labels: "napari.layers.Labels", pretrained_checkpoint: "napari.types.Path" = '/home/', shape: int=256, z_axis: int=0, max_epochs: int=10,checkpoint_output_dir = '/home/',checkpoint_name='',pretraining=False) -> "napari.types.LayerDataTuple":
     """Generate thresholded image.
 
     This function will be turned into a widget using `autogenerate: true`.
@@ -176,9 +176,9 @@ def training(image: "napari.types.ImageData", labels: "napari.types.LabelsData",
     else:
         shape=torch.load(pretrained_checkpoint)['hyper_parameters']['shape'][0]
     Y_up, Y_down, Y_fused = train_and_infer(
-        image, labels, pretrained_checkpoint,shape,max_epochs,z_axis,str(checkpoint_output_dir),checkpoint_name,pretraining)
+        image.data, labels.data, pretrained_checkpoint,shape,max_epochs,z_axis,str(checkpoint_output_dir),checkpoint_name,pretraining)
     torch.cuda.empty_cache()
-    return [((Y_up).astype(int), {'name': 'propagated_up'}, 'labels'), ((Y_down).astype(int), {'name': 'propagated_down'}, 'labels'), ((Y_fused).astype(int), {'name': 'propagated_fused'}, 'labels')]
+    return [((Y_up).astype('uint8'), {'name': 'propagated_up','metadata':labels.metadata}, 'labels'), ((Y_down).astype('uint8'), {'name': 'propagated_down','metadata':labels.metadata}, 'labels'), ((Y_fused).astype('uint8'), {'name': 'propagated_fused','metadata':labels.metadata}, 'labels')]
 
 def filter_slices(labels: "napari.layers.Labels",slices : str,z_axis: int=0) -> "napari.types.LayerDataTuple":
     slices=slices.replace(' ','').split(',')
@@ -217,19 +217,19 @@ def get_metrics(pred,gt):
 
 
 
-class GetMetrics(QWidget):
-    """
-    QWidget showing metrics between two LabelsData layers
-    """
-    def __init__(self,napari_viewer):
-        super().__init__()
-        self.viewer=napari_viewer
-        line_edit = LineEdit(value='hello!')
-        self.setLayout(QHBoxLayout())
-        print(napari_viewer.dict()['layers'])
-        date=LineEdit(bind=get_date())
-        self.layout().addWidget(line_edit.native)
-        self.layout().addWidget(date.native)
+# class GetMetrics(QWidget):
+#     """
+#     QWidget showing metrics between two LabelsData layers
+#     """
+#     def __init__(self,napari_viewer):
+#         super().__init__()
+#         self.viewer=napari_viewer
+#         line_edit = LineEdit(value='hello!')
+#         self.setLayout(QHBoxLayout())
+#         print(napari_viewer.dict()['layers'])
+#         date=LineEdit(bind=get_date())
+#         self.layout().addWidget(line_edit.native)
+#         self.layout().addWidget(date.native)
 #         self.setWindowTitle('Metrics')
 #         self.setMinimumWidth(300)
 #         self.setMinimumHeight(300)
@@ -264,18 +264,13 @@ class GetMetrics(QWidget):
 #             self.hausdorff.setText('0')
 #             self.asd.setText('0')
 
-# @magic_factory(dice=dict(widget_type='TextEdit',bind=False))
-# def GetMetrics(y_pred: "napari.layers.Labels",y_true: "napari.layers.Labels",dice) -> QLabel :
-#     print(dice)
-    # dice_score=dice_coef(y_pred.data,y_true.data)
-    # # hausdorff=hausdorff_distance(y_pred.data,y_true.data)
-    # # asd=average_surface_distance(y_pred.data,y_true.data)
-    # # print(dice,hausdorff,asd)
-    # print(dice)
-    # print(dice_score)
-    # dice_label=QLabel(str(dice_score))
-    # dice.value=dice_score
-    # return dice_label 
+@magic_factory(result_widget=True)
+def GetMetrics(y_pred: "napari.layers.Labels",y_true: "napari.layers.Labels") -> QLabel :
+    dice_score=dice_coef(y_pred.data,y_true.data)
+    # hausdorff=hausdorff_distance(y_pred.data,y_true.data)
+    # asd=average_surface_distance(y_pred.data,y_true.data)
+    # print(dice,hausdorff,asd)
+    return dice_score 
 
 class FuseLabelWidget(QWidget):
     # your QWidget.__init__ can optionally request the napari viewer instance
