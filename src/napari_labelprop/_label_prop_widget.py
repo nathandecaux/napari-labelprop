@@ -11,6 +11,7 @@ from magicgui import magic_factory,magicgui
 from qtpy.QtWidgets import QWidget, QHBoxLayout, QPushButton,QVBoxLayout,QLabel,QFileDialog,QListWidget,QLineEdit,QListWidgetItem
 from qtpy.QtCore import Signal, QObject, QEvent
 from qtpy.QtCore import QEvent, Qt
+from magicgui.widgets import *
 from napari.types import NewType
 from labelprop.napari_entry import propagate_from_ckpt,train, train_and_infer
 import sys
@@ -23,7 +24,8 @@ import fnmatch
 from magicgui.widgets import create_widget
 import torch
 from copy import deepcopy
-
+import numpy as np
+import datetime
 class MyQLineEdit(QLineEdit):
     keyup = Signal()
     keydown = Signal()
@@ -178,18 +180,102 @@ def training(image: "napari.types.ImageData", labels: "napari.types.LabelsData",
     torch.cuda.empty_cache()
     return [((Y_up).astype(int), {'name': 'propagated_up'}, 'labels'), ((Y_down).astype(int), {'name': 'propagated_down'}, 'labels'), ((Y_fused).astype(int), {'name': 'propagated_fused'}, 'labels')]
 
-def filter_slices(labels: "napari.types.LabelsData",slices : str,z_axis: int=0) -> "napari.types.LabelsData":
+def filter_slices(labels: "napari.layers.Labels",slices : str,z_axis: int=0) -> "napari.types.LayerDataTuple":
     slices=slices.replace(' ','').split(',')
     print(slices)
-    labels_filtered=deepcopy(labels)
+    labels_filtered=deepcopy(labels.data)
     indx = [slice(None)]*labels.ndim
 
-    for i in range(labels.shape[z_axis]):
+    for i in range(labels.data.shape[z_axis]):
         if str(i) not in slices:
             indx[z_axis] = i
             labels_filtered[indx]=labels_filtered[indx]*0
-    return labels_filtered
+    print(labels.metadata)
+    return [((labels_filtered).astype('uint8'), {'name': 'filtered_mask','metadata':labels.metadata}, 'labels')]
 
+def dice_coef(y_true, y_pred, smooth=1e-8):
+    y_true_f = y_true.flatten()
+    y_pred_f = y_pred.flatten()
+    intersection = np.sum(y_true_f * y_pred_f)
+    return (2. * intersection + smooth) / (np.sum(y_true_f) + np.sum(y_pred_f) + smooth)
+
+def average_surface_distance(y_true, y_pred):
+    y_true_f = y_true.flatten()
+    y_pred_f = y_pred.flatten()
+    return np.mean(np.sqrt(np.sum((y_true_f - y_pred_f)**2, axis=1)))
+
+def hausdorff_distance(y_true, y_pred):
+    y_true_f = y_true.flatten()
+    y_pred_f = y_pred.flatten()
+    return np.max(np.max(np.sqrt(np.sum((y_true_f - y_pred_f)**2, axis=1))))
+
+def get_metrics(pred,gt):
+    dice=dice_coef(pred,gt)
+    hausdorff=hausdorff_distance(pred,gt)
+    asd=average_surface_distance(pred,gt)
+    return [((dice,hausdorff,asd), {'name': 'metrics'}, 'labels')]
+
+
+
+class GetMetrics(QWidget):
+    """
+    QWidget showing metrics between two LabelsData layers
+    """
+    def __init__(self,napari_viewer):
+        super().__init__()
+        self.viewer=napari_viewer
+        line_edit = LineEdit(value='hello!')
+        self.setLayout(QHBoxLayout())
+        print(napari_viewer.dict()['layers'])
+        date=LineEdit(bind=get_date())
+        self.layout().addWidget(line_edit.native)
+        self.layout().addWidget(date.native)
+#         self.setWindowTitle('Metrics')
+#         self.setMinimumWidth(300)
+#         self.setMinimumHeight(300)
+#         self.setLayout(QVBoxLayout())
+#         self.layout().addWidget(QLabel('Dice Coefficient'))
+#         self.dice_coef=QLabel('0')
+#         self.layout().addWidget(self.dice_coef)
+#         self.layout().addWidget(QLabel('Hausdorff Distance'))
+#         self.hausdorff=QLabel('0')
+#         self.layout().addWidget(self.hausdorff)
+#         self.layout().addWidget(QLabel('Average Surface Distance'))
+#         self.asd=QLabel('0')
+#         #Button to show metrics
+#         self.show_metrics_button=QPushButton('Show Metrics')
+#         self.show_metrics_button.clicked.connect(self.show_metrics)
+#         self.layout().addWidget(self.show_metrics_button)
+#         #Add ListWidget showing available self.viewer.layers
+#         self.layers_list=QListWidget(deepcopy(self.viewer.layers))
+#         print(self.viewer.layers)
+#         self.layout().addWidget(self.layers_list)
+
+    
+#     def show_metrics(self):
+#         if len(self.viewer.layers)==2:
+#             pred=self.viewer.layers[0].data
+#             gt=self.viewer.layers[1].data
+#             self.dice_coef.setText(str(dice_coef(pred,gt)))
+#             self.hausdorff.setText(str(hausdorff_distance(pred,gt)))
+#             self.asd.setText(str(average_surface_distance(pred,gt)))
+#         else:
+#             self.dice_coef.setText('0')
+#             self.hausdorff.setText('0')
+#             self.asd.setText('0')
+
+# @magic_factory(dice=dict(widget_type='TextEdit',bind=False))
+# def GetMetrics(y_pred: "napari.layers.Labels",y_true: "napari.layers.Labels",dice) -> QLabel :
+#     print(dice)
+    # dice_score=dice_coef(y_pred.data,y_true.data)
+    # # hausdorff=hausdorff_distance(y_pred.data,y_true.data)
+    # # asd=average_surface_distance(y_pred.data,y_true.data)
+    # # print(dice,hausdorff,asd)
+    # print(dice)
+    # print(dice_score)
+    # dice_label=QLabel(str(dice_score))
+    # dice.value=dice_score
+    # return dice_label 
 
 class FuseLabelWidget(QWidget):
     # your QWidget.__init__ can optionally request the napari viewer instance
