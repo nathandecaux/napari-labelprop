@@ -23,9 +23,13 @@ from os.path import isfile, join
 import fnmatch
 from magicgui.widgets import create_widget
 import torch
+from torch.nn.functional import one_hot
+from monai.metrics import compute_meandice
 from copy import deepcopy
 import numpy as np
 import datetime
+from skimage import morphology
+from skimage.segmentation import slic
 class MyQLineEdit(QLineEdit):
     keyup = Signal()
     keydown = Signal()
@@ -193,11 +197,21 @@ def filter_slices(labels: "napari.layers.Labels",slices : str,z_axis: int=0) -> 
     print(labels.metadata)
     return [((labels_filtered).astype('uint8'), {'name': 'filtered_mask','metadata':labels.metadata}, 'labels')]
 
+def get_supervoxels(image: "napari.layers.Image",n_segments : int=100,compactness: float=0.1,mask_threshold:float=0,slic_zero: bool=False) -> "napari.types.LayerDataTuple":
+    """Generate supervoxels. Based on slic function from scikit-image.
+
+    This function will be turned into a widget using `autogenerate: true`.
+    """
+    mask=(image.data-np.min(image.data))/(np.max(image.data)-np.min(image.data))
+    mask=mask>mask_threshold
+    supervoxels=slic(image.data, multichannel=False, n_segments=n_segments, compactness=compactness,slic_zero=slic_zero,mask=mask)
+    return [((supervoxels).astype('uint8'), {'name': 'supervoxels','metadata':image.metadata}, 'labels')]
+
 def dice_coef(y_true, y_pred, smooth=1e-8):
     y_true_f = y_true.flatten()
     y_pred_f = y_pred.flatten()
-    intersection = np.sum(y_true_f * y_pred_f)
-    return (2. * intersection + smooth) / (np.sum(y_true_f) + np.sum(y_pred_f) + smooth)
+    intersection = torch.sum(y_true_f * y_pred_f)
+    return (2. * intersection + smooth) / (torch.sum(y_true_f) + torch.sum(y_pred_f) + smooth)
 
 def average_surface_distance(y_true, y_pred):
     y_true_f = y_true.flatten()
@@ -265,12 +279,27 @@ def get_metrics(pred,gt):
 #             self.asd.setText('0')
 
 @magic_factory(result_widget=True)
-def GetMetrics(y_pred: "napari.layers.Labels",y_true: "napari.layers.Labels") -> QLabel :
-    dice_score=dice_coef(y_pred.data,y_true.data)
+def GetMetrics(y_pred: "napari.layers.Labels",y_true: "napari.layers.Labels",z_axis=0) -> QLabel :
+    print(y_pred.data.shape)
+    pred=torch.from_numpy(y_pred.data).long()
+    gt=torch.from_numpy(y_true.data).long()
+    pred_oh=torch.moveaxis(one_hot(pred,pred.max()+1),-1,0)
+    pred_oh=torch.moveaxis(pred_oh, z_axis+1, 0)
+    y_true_oh=torch.moveaxis(one_hot(gt,gt.max()+1),-1,0)
+    y_true_oh=torch.moveaxis(y_true_oh, z_axis+1, 0)
+    dices={}
+    print(dices)
+    for lab in list(range(y_true_oh.shape[1]))[1:]:
+        dices[lab]=[]
+        for i in range(y_true_oh.shape[0]):
+            if y_true_oh[i,lab].sum()>0:
+                dices[lab].append(dice_coef(pred_oh[i,lab],y_true_oh[i,lab]))
     # hausdorff=hausdorff_distance(y_pred.data,y_true.data)
     # asd=average_surface_distance(y_pred.data,y_true.data)
     # print(dice,hausdorff,asd)
-    return dice_score 
+    for k,v in dices.items():
+        dices[k]=torch.stack(v).mean()
+    return str(dices) 
 
 class FuseLabelWidget(QWidget):
     # your QWidget.__init__ can optionally request the napari viewer instance
@@ -293,3 +322,18 @@ class FuseLabelWidget(QWidget):
         self.layout().addWidget(training.native)
     def _on_click(self):
         print("napari has", len(self.viewer.layers), "layers")
+
+def remove_small_objects(labels:"napari.layers.Labels",min_size:int=64,connectivity:int=1,z_axis:int=2) -> "napari.types.LayerDataTuple":
+    # filter=labels.data*False
+    # for lab in list(np.unique(labels.data))[1:]:
+    #     label=labels.data==lab
+    #     mask=morphology.remove_small_objects(label,min_size=min_size,connectivity=connectivity)
+    #     filter=filter+mask
+    filtered=one_hot(torch.from_numpy(labels.data.copy().astype('uint8')).long())>0
+    for lab in list(np.unique(labels.data))[1:]:
+        for i in range(labels.data.shape[z_axis]):
+            label=filtered[:,:,i,lab].numpy()
+            mask=morphology.remove_small_objects(label,min_size=min_size,connectivity=connectivity)
+            filtered[:,:,i,lab]=torch.from_numpy(mask)
+    filtered=torch.argmax(filtered*1.,dim=-1).numpy()
+    return [((filtered).astype('uint8'), {'name': 'filtered_mask','metadata':labels.metadata}, 'labels')]

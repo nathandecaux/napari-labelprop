@@ -35,6 +35,12 @@ contributions:
     - id: napari-labelprop.get_metrics
       python_name: napari_labelprop._label_prop_widget:GetMetrics
       title: Show metrics between two label slices
+    - id: napari-labelprop.remove_small_objects
+      python_name: napari_labelprop._label_prop_widget:remove_small_objects
+      title: Remove objects smaller than the specified size.
+    - id: napari-labelprop.get_supervoxels
+      python_name: napari_labelprop._label_prop_widget:get_supervoxels
+      title: Get supervoxels
   readers:
     - command: napari-labelprop.get_reader
       accepts_directories: false
@@ -69,5 +75,11 @@ contributions:
       display_name:  Remove annotated slices
     - command: napari-labelprop.get_metrics
       display_name:  Get metrics
+    - command: napari-labelprop.remove_small_objects
+      autogenerate: true
+      display_name:  Remove small objects
+    - command: napari-labelprop.get_supervoxels
+      autogenerate: true
+      display_name:  Get supervoxels
 
 
