@@ -28,6 +28,7 @@ from monai.metrics import compute_meandice
 from copy import deepcopy
 import numpy as np
 import datetime
+import napari
 from skimage import morphology
 from skimage.segmentation import slic
 class MyQLineEdit(QLineEdit):
@@ -158,31 +159,69 @@ def magic_widget(img_layer: "napari.layers.Image"):
 # Uses the `autogenerate: true` flag in the plugin manifest
 # to indicate it should be wrapped as a magicgui to autogenerate
 # a widget.
-def inference(image: "napari.layers.Image", labels: "napari.layers.Labels", checkpoint: "napari.types.Path", z_axis: int, label : int) -> "napari.types.LayerDataTuple":
+def inference_function(image: "napari.layers.Image", labels: "napari.layers.Labels", checkpoint: "napari.types.Path", z_axis: int, label : int,criteria='ncc',reduction='none',gpu=True) -> "napari.types.LayerDataTuple":
     """Generate thresholded image.
 
     This function will be turned into a widget using `autogenerate: true`.
     """
     shape=torch.load(checkpoint)['hyper_parameters']['shape'][0]
+    device='cuda' if gpu else 'cpu'
+    kwargs={'criteria':criteria,'reduction':reduction,'device':device}
+    checkpoint=str(checkpoint)
     if label==0: label='all'
     Y_up, Y_down, Y_fused = propagate_from_ckpt(
-        image.data, labels.data, checkpoint, z_axis=z_axis,label=label,shape=shape)
+        image.data, labels.data, checkpoint, z_axis=z_axis,label=label,shape=shape,**kwargs)
     return [((Y_up).astype('uint8'), {'name': 'propagated_up','metadata':labels.metadata}, 'labels'), ((Y_down).astype('uint8'), {'name': 'propagated_down','metadata':labels.metadata}, 'labels'), ((Y_fused).astype('uint8'), {'name': 'propagated_fused','metadata':labels.metadata}, 'labels')]
 
+class inference(FunctionGui):
+    def __init__(self):
+        super().__init__(inference_function,call_button=True,param_options={'criteria':{'choices':['distance','ncc']},'reduction':{'choices':['none','local_mean','mean']},'checkpoint':{'filter':'*.ckpt'}})
+        self.criteria.changed.connect(self.update_reduction)
+  
+    def __call__(self):
+        napari.utils.notifications.show_info('Inference started')
+        super().__call__()
+        napari.utils.notifications.show_info('Inference finished')
+
+    def update_reduction(self):
+        if self.criteria.value=='distance':
+            self.reduction.value='mean'
+            self.reduction.hide()
+        else:
+            self.reduction.show()
+
+
 #@magicgui(call_button='run')#(checkpoint_output_dir={'mode': 'd'}, call_button='Run') , checkpoint_output_dir: pathlib.Path.home()
-@magic_factory(checkpoint_output_dir=dict(widget_type='FileEdit', mode='d'))
-def training(image: "napari.layers.Image", labels: "napari.layers.Labels", pretrained_checkpoint: "napari.types.Path" = '/home/', shape: int=256, z_axis: int=0, max_epochs: int=10,checkpoint_output_dir = '/home/',checkpoint_name='',pretraining=False) -> "napari.types.LayerDataTuple":
+# @magic_factory(checkpoint_output_dir=dict(widget_type='FileEdit', mode='d'))
+def training_function(image: "napari.layers.Image", labels: "napari.layers.Labels", pretrained_checkpoint: "napari.types.Path" = '/home/', shape: int=256, z_axis: int=0, max_epochs: int=10,checkpoint_output_dir = '/home/',checkpoint_name='',criteria='ncc',reduction='none',gpu=True) -> "napari.types.LayerDataTuple":
     """Generate thresholded image.
 
     This function will be turned into a widget using `autogenerate: true`.
     """
     if not 'ckpt' in str(pretrained_checkpoint): pretrained_checkpoint=None
-    else:
-        shape=torch.load(pretrained_checkpoint)['hyper_parameters']['shape'][0]
+    device='cuda' if gpu else 'cpu'
+    kwargs={'criteria':criteria,'reduction':reduction,'device':device}
     Y_up, Y_down, Y_fused = train_and_infer(
-        image.data, labels.data, pretrained_checkpoint,shape,max_epochs,z_axis,str(checkpoint_output_dir),checkpoint_name,pretraining)
+        image.data, labels.data, str(pretrained_checkpoint),shape,max_epochs,z_axis,str(checkpoint_output_dir),checkpoint_name,pretraining=False,**kwargs)
     torch.cuda.empty_cache()
     return [((Y_up).astype('uint8'), {'name': 'propagated_up','metadata':labels.metadata}, 'labels'), ((Y_down).astype('uint8'), {'name': 'propagated_down','metadata':labels.metadata}, 'labels'), ((Y_fused).astype('uint8'), {'name': 'propagated_fused','metadata':labels.metadata}, 'labels')]
+
+class training(FunctionGui):
+    def __init__(self):
+        super().__init__(training_function,call_button=True,param_options={'criteria':{'choices':['distance','ncc'],'tooltips':"Test"},'reduction':{'choices':['none','local_mean','mean']}, 'checkpoint_output_dir':{'widget_type':'FileEdit','mode': 'd'},'pretrained_checkpoint':{'filter':'*.ckpt'}})
+        self.criteria.changed.connect(self.update_reduction)
+    def __call__(self):
+        napari.utils.notifications.show_info('Training started')
+        super().__call__()
+        napari.utils.notifications.show_info('Training finished')
+
+    def update_reduction(self):
+        if self.criteria.value=='distance':
+            self.reduction.value='mean'
+            self.reduction.hide()
+        else:
+            self.reduction.show()
+
 
 def filter_slices(labels: "napari.layers.Labels",slices : str,z_axis: int=0) -> "napari.types.LayerDataTuple":
     slices=slices.replace(' ','').split(',')

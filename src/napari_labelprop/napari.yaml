@@ -65,7 +65,7 @@ contributions:
     #   autogenerate: true
     #   display_name: Example Function Widget 
     - command: napari-labelprop.inference_widget
-      autogenerate: true
+      # autogenerate: true
       display_name: Inference
     - command: napari-labelprop.training_widget
       # autogenerate: true
