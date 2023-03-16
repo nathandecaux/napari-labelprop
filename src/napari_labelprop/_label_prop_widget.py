@@ -208,7 +208,7 @@ def training_function(image: "napari.layers.Image", labels: "napari.layers.Label
 
 class training(FunctionGui):
     def __init__(self):
-        super().__init__(training_function,call_button=True,param_options={'criteria':{'choices':['distance','ncc'],'tooltips':"Test"},'reduction':{'choices':['none','local_mean','mean']}, 'checkpoint_output_dir':{'widget_type':'FileEdit','mode': 'd'},'pretrained_checkpoint':{'filter':'*.ckpt'}})
+        super().__init__(training_function,call_button=True,param_options={'criteria':{'choices':['distance','ncc']},'reduction':{'choices':['none','local_mean','mean']}, 'checkpoint_output_dir':{'widget_type':'FileEdit','mode': 'd'},'pretrained_checkpoint':{'filter':'*.ckpt'}})
         self.criteria.changed.connect(self.update_reduction)
     def __call__(self):
         napari.utils.notifications.show_info('Training started')
