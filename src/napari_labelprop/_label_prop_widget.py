@@ -31,6 +31,7 @@ import datetime
 import napari
 from skimage import morphology
 from skimage.segmentation import slic
+import napari.qt.threading as nqt
 class MyQLineEdit(QLineEdit):
     keyup = Signal()
     keydown = Signal()
@@ -158,7 +159,8 @@ def magic_widget(img_layer: "napari.layers.Image"):
 
 # Uses the `autogenerate: true` flag in the plugin manifest
 # to indicate it should be wrapped as a magicgui to autogenerate
-# a widget.
+# a widget
+
 def inference_function(image: "napari.layers.Image", labels: "napari.layers.Labels", checkpoint: "napari.types.Path", z_axis: int, label : int,criteria='ncc',reduction='none',gpu=True) -> "napari.types.LayerDataTuple":
     """Generate thresholded image.
 
@@ -171,6 +173,7 @@ def inference_function(image: "napari.layers.Image", labels: "napari.layers.Labe
     if label==0: label='all'
     Y_up, Y_down, Y_fused = propagate_from_ckpt(
         image.data, labels.data, checkpoint, z_axis=z_axis,label=label,shape=shape,**kwargs)
+ 
     return [((Y_up).astype('uint8'), {'name': 'propagated_up','metadata':labels.metadata}, 'labels'), ((Y_down).astype('uint8'), {'name': 'propagated_down','metadata':labels.metadata}, 'labels'), ((Y_fused).astype('uint8'), {'name': 'propagated_fused','metadata':labels.metadata}, 'labels')]
 
 class inference(FunctionGui):
@@ -180,9 +183,19 @@ class inference(FunctionGui):
   
     def __call__(self):
         napari.utils.notifications.show_info('Inference started')
+        #Call super in an unblocking thread (avoid WARNING QObject::setParent: Cannot set parent, new parent is in a different thread)
+        worker=self._call_super()
+    #     worker.returned.connect(self._on_finished)
+    #     worker.start()
+    # # @nqt.thread_worker(connect={'returned':_on_finished})
+    # @nqt.thread_worker
+    def _call_super(self):
         super().__call__()
+    
+    def _on_finished(self, result):
         napari.utils.notifications.show_info('Inference finished')
-
+        
+        
     def update_reduction(self):
         if self.criteria.value=='distance':
             self.reduction.value='mean'
@@ -208,7 +221,7 @@ def training_function(image: "napari.layers.Image", labels: "napari.layers.Label
 
 class training(FunctionGui):
     def __init__(self):
-        super().__init__(training_function,call_button=True,param_options={'criteria':{'choices':['distance','ncc'],'tooltips':"Test"},'reduction':{'choices':['none','local_mean','mean']}, 'checkpoint_output_dir':{'widget_type':'FileEdit','mode': 'd'},'pretrained_checkpoint':{'filter':'*.ckpt'}})
+        super().__init__(training_function,call_button=True,param_options={'criteria':{'choices':['distance','ncc']},'reduction':{'choices':['none','local_mean','mean']}, 'checkpoint_output_dir':{'widget_type':'FileEdit','mode': 'd'},'pretrained_checkpoint':{'filter':'*.ckpt'}})
         self.criteria.changed.connect(self.update_reduction)
     def __call__(self):
         napari.utils.notifications.show_info('Training started')
