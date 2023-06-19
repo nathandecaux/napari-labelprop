@@ -1,0 +1,26 @@
+{
+  "template": "https://github.com/napari/cookiecutter-napari-plugin",
+  "commit": "4bb22970828e23ad2b9c215fa18137ada18ac191",
+  "checkout": null,
+  "context": {
+    "cookiecutter": {
+      "full_name": "Nathan Decaux",
+      "email": "nathan.decaux@hotmail.fr",
+      "github_username_or_organization": "nathandecaux",
+      "plugin_name": "napari-labelprop",
+      "github_repository_url": "https://github.com/nathandecaux/napari-labelprop",
+      "module_name": "napari_labelprop",
+      "display_name": "Label Propagation",
+      "short_description": "tation using intra-subject propagation",
+      "include_reader_plugin": "y",
+      "include_writer_plugin": "y",
+      "include_sample_data_plugin": "y",
+      "include_widget_plugin": "y",
+      "use_git_tags_for_versioning": "n",
+      "install_precommit": "n",
+      "license": "BSD-3",
+      "_template": "https://github.com/napari/cookiecutter-napari-plugin"
+    }
+  },
+  "directory": null
+}
