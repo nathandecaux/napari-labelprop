@@ -23,6 +23,9 @@ from os.path import isfile, join
 import fnmatch
 from magicgui.widgets import create_widget
 import torch
+import time
+from contextlib import redirect_stdout
+import io
 from torch.nn.functional import one_hot
 from monai.metrics import compute_meandice
 from copy import deepcopy
@@ -161,7 +164,7 @@ def magic_widget(img_layer: "napari.layers.Image"):
 # to indicate it should be wrapped as a magicgui to autogenerate
 # a widget
 
-def inference_function(image: "napari.layers.Image", labels: "napari.layers.Labels", checkpoint: "napari.types.Path", z_axis: int, label : int,criteria='ncc',reduction='none',gpu=True) -> "napari.types.LayerDataTuple":
+def inference_function(image: "napari.layers.Image", labels_layer: "napari.layers.Labels", hints: "napari.layers.Labels", checkpoint: "napari.types.Path", z_axis: int, label_n : int,criteria='ncc',reduction='none',gpu=True) -> "napari.types.LayerDataTuple":
     """Generate thresholded image.
 
     This function will be turned into a widget using `autogenerate: true`.
@@ -170,17 +173,41 @@ def inference_function(image: "napari.layers.Image", labels: "napari.layers.Labe
     device='cuda' if gpu else 'cpu'
     kwargs={'criteria':criteria,'reduction':reduction,'device':device}
     checkpoint=str(checkpoint)
-    if label==0: label='all'
+    labels_data=labels_layer.data.astype('uint8')
+    if hints==labels_layer:
+        hints=''
+
+    if hints!='':
+        hints_data=hints.data.astype('uint8')
+    else:
+        hints_data=None
+    if label_n>0:
+        labels_data=(labels_data==label_n)*1
+        if hints!='':
+            hints_data=(hints_data==label_n)*1
+    if label_n==0: label_n='all'
     Y_up, Y_down, Y_fused = propagate_from_ckpt(
-        image.data, labels.data, checkpoint, z_axis=z_axis,label=label,shape=shape,**kwargs)
- 
-    return [((Y_up).astype('uint8'), {'name': 'propagated_up','metadata':labels.metadata}, 'labels'), ((Y_down).astype('uint8'), {'name': 'propagated_down','metadata':labels.metadata}, 'labels'), ((Y_fused).astype('uint8'), {'name': 'propagated_fused','metadata':labels.metadata}, 'labels')]
+        image.data, labels_data, checkpoint, hints=hints_data, z_axis=z_axis,label=label_n,shape=shape,**kwargs)
+    
+    return (Y_fused, {"name":"Propagated","affine": labels_layer.affine, "metadata": labels_layer.metadata}, "labels")
+    # return [((Y_up).astype('uint8'), {'name': 'propagated_up','metadata':labels.metadata}, 'labels'), ((Y_down).astype('uint8'), {'name': 'propagated_down','metadata':labels.metadata}, 'labels'), ((Y_fused).astype('uint8'), {'name': 'propagated_fused','metadata':labels.metadata}, 'labels')]
 
 class inference(FunctionGui):
-    def __init__(self):
+    def __init__(self,viewer: "napari.viewer.Viewer"):         
         super().__init__(inference_function,call_button=True,param_options={'criteria':{'choices':['distance','ncc']},'reduction':{'choices':['none','local_mean','mean']},'checkpoint':{'filter':'*.ckpt'}})
+        #Change display name of parameters
         self.criteria.changed.connect(self.update_reduction)
-  
+        self.image.label='Image'
+        self.labels_layer.label='Labels'
+        self.hints.label='(Optional) Additional Scribbles'
+
+        self.checkpoint.label='Checkpoint'
+        self.z_axis.label='Propagation axis'
+        self.label_n.label='Label to propagate (0 for all)'
+        self.criteria.label='Weighting criteria'
+        self.reduction.label='Reduction'
+        self.gpu.label='Use GPU'
+
     def __call__(self):
         napari.utils.notifications.show_info('Inference started')
         #Call super in an unblocking thread (avoid WARNING QObject::setParent: Cannot set parent, new parent is in a different thread)
@@ -206,27 +233,66 @@ class inference(FunctionGui):
 
 #@magicgui(call_button='run')#(checkpoint_output_dir={'mode': 'd'}, call_button='Run') , checkpoint_output_dir: pathlib.Path.home()
 # @magic_factory(checkpoint_output_dir=dict(widget_type='FileEdit', mode='d'))
-def training_function(image: "napari.layers.Image", labels: "napari.layers.Labels", pretrained_checkpoint: "napari.types.Path" = '/home/', shape: int=256, z_axis: int=0, max_epochs: int=10,checkpoint_output_dir = '/home/',checkpoint_name='',criteria='ncc',reduction='none',gpu=True) -> "napari.types.LayerDataTuple":
+def training_function(image: "napari.layers.Image", labels_layer: "napari.layers.Labels",hints: "napari.layers.Labels", pretrained_checkpoint: "napari.types.Path", shape=(256,256), z_axis: int=0,label_n: int=0, max_epochs: int=10,checkpoint_output_dir = '/tmp/checkpoints/',checkpoint_name='',criteria='ncc',reduction='none',gpu=True) -> "napari.types.LayerDataTuple":
     """Generate thresholded image.
 
     This function will be turned into a widget using `autogenerate: true`.
     """
-    if not 'ckpt' in str(pretrained_checkpoint): pretrained_checkpoint=None
+    pretrained_checkpoint=None if not 'ckpt' in str(pretrained_checkpoint) else str(pretrained_checkpoint)
+    print(pretrained_checkpoint)
     device='cuda' if gpu else 'cpu'
     kwargs={'criteria':criteria,'reduction':reduction,'device':device}
-    Y_up, Y_down, Y_fused = train_and_infer(
-        image.data, labels.data, str(pretrained_checkpoint),shape,max_epochs,z_axis,str(checkpoint_output_dir),checkpoint_name,pretraining=False,**kwargs)
-    torch.cuda.empty_cache()
-    return [((Y_up).astype('uint8'), {'name': 'propagated_up','metadata':labels.metadata}, 'labels'), ((Y_down).astype('uint8'), {'name': 'propagated_down','metadata':labels.metadata}, 'labels'), ((Y_fused).astype('uint8'), {'name': 'propagated_fused','metadata':labels.metadata}, 'labels')]
+    labels_data=labels_layer.data.astype('uint8')
 
+    if hints==labels_layer:
+        hints=''
+
+    if hints!='':
+        hints_data=hints.data.astype('uint8')
+    else:
+        hints_data=None
+
+    if label_n>0:
+        labels_data=(labels_data==label_n)*1
+        if hints!='':
+            hints_data=(hints_data==label_n)*1
+    if label_n==0: label_n='all'
+    print(checkpoint_name)
+    Y_up, Y_down, Y_fused = train_and_infer(
+        image.data, labels_data, pretrained_checkpoint,shape[0],max_epochs,z_axis,str(checkpoint_output_dir),checkpoint_name,hints=hints_data,pretraining=False,**kwargs)
+    torch.cuda.empty_cache()
+    napari.utils.notifications.show_info('Training finished')
+
+    return (Y_fused, {"name":"Propagated","affine": labels_layer.affine, "metadata": labels_layer.metadata}, "labels")
 class training(FunctionGui):
-    def __init__(self):
+    def __init__(self,viewer: "napari.viewer.Viewer"):
         super().__init__(training_function,call_button=True,param_options={'criteria':{'choices':['distance','ncc']},'reduction':{'choices':['none','local_mean','mean']}, 'checkpoint_output_dir':{'widget_type':'FileEdit','mode': 'd'},'pretrained_checkpoint':{'filter':'*.ckpt'}})
         self.criteria.changed.connect(self.update_reduction)
-    def __call__(self):
+        self.image.label='Image'
+        self.labels_layer.label='Labels'
+        self.hints.label='(Optional) Additional Scribbles'
+        self.pretrained_checkpoint.label='Pretrained checkpoint'
+        self.shape.label='Slices shape'
+        self.z_axis.label='Propagation axis'
+        self.label_n.label='Label to propagate (0 for all)'
+        self.max_epochs.label='Max epochs'
+        self.checkpoint_output_dir.label='Checkpoint output directory'
+        #Get current directory
+        self.checkpoint_output_dir.value=str(pathlib.Path.cwd())
+        self.checkpoint_name.label='Checkpoint name'
+        self.criteria.label='Weighting criteria'
+        self.reduction.label='Reduction'
+        self.gpu.label='Use GPU'
+
+        #Disable shape second dimension
+        self.shape[1].enabled=False
+        self.shape[0].changed.connect(self.update_shape_2)
+        self.image.changed.connect(self.update_shape)
+        self.z_axis.changed.connect(self.update_shape)
+        self.call_button.clicked.connect(self._on_click)
+    
+    def _on_click(self):
         napari.utils.notifications.show_info('Training started')
-        super().__call__()
-        napari.utils.notifications.show_info('Training finished')
 
     def update_reduction(self):
         if self.criteria.value=='distance':
@@ -235,6 +301,13 @@ class training(FunctionGui):
         else:
             self.reduction.show()
 
+    def update_shape(self):
+        if self.image.value is not None:
+            img_shape=self.image.value.data.shape[:self.z_axis.value]+self.image.value.data.shape[self.z_axis.value+1:]
+            self.shape.value=tuple(img_shape)
+    
+    def update_shape_2(self):
+        self.shape[1].value=self.shape[0].value
 
 def filter_slices(labels: "napari.layers.Labels",slices : str,z_axis: int=0) -> "napari.types.LayerDataTuple":
     slices=slices.replace(' ','').split(',')
