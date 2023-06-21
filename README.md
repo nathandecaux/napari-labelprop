@@ -41,12 +41,14 @@ To install this project :
 
 ## Usage
 
+Download [pretrained weights](https://raw.githubusercontent.com/nathandecaux/napari-labelprop/main/pretrained.ckpt).
+
 Open napari from terminal and start using functions from 'napari-labelprop' plugin (Under Plugins scrolling menu).
 
 Available functions are :
 
 - Inference : Propagate labels from trained weights (Pytorch checkpoint required)
-- Training : Start training from scratch (at least 100 epochs are recommended) or from a pretrained model
+- Training : Start training from scratch or from the pretrained weights.
 
 PS : "Unsupervised pretraining" is not yet implemented. See CLI option at [LabelProp](https://github.com/nathandecaux/labelprop) repository.
 
