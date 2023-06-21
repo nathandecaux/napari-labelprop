@@ -233,7 +233,7 @@ class inference(FunctionGui):
 
 #@magicgui(call_button='run')#(checkpoint_output_dir={'mode': 'd'}, call_button='Run') , checkpoint_output_dir: pathlib.Path.home()
 # @magic_factory(checkpoint_output_dir=dict(widget_type='FileEdit', mode='d'))
-def training_function(image: "napari.layers.Image", labels_layer: "napari.layers.Labels",hints: "napari.layers.Labels", pretrained_checkpoint: "napari.types.Path", shape=(256,256), z_axis: int=0,label_n: int=0, max_epochs: int=10,checkpoint_output_dir = '/tmp/checkpoints/',checkpoint_name='',criteria='ncc',reduction='none',gpu=True) -> "napari.types.LayerDataTuple":
+def training_function(image: "napari.layers.Image", labels_layer: "napari.layers.Labels",hints: "napari.layers.Labels", pretrained_checkpoint: "napari.types.Path", shape=(256,256), z_axis: int=0,label_n: int=0, max_epochs: int=50,checkpoint_output_dir = '/tmp/checkpoints/',checkpoint_name='',criteria='ncc',reduction='none',gpu=True) -> "napari.types.LayerDataTuple":
     """Generate thresholded image.
 
     This function will be turned into a widget using `autogenerate: true`.
