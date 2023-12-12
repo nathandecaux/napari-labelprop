@@ -27,7 +27,6 @@ import time
 from contextlib import redirect_stdout
 import io
 from torch.nn.functional import one_hot
-from monai.metrics import compute_meandice
 from copy import deepcopy
 import numpy as np
 import datetime
