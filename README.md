@@ -13,16 +13,11 @@
 ---------------------------------------------------------------------------------
 ---
 
-This [napari][napari] plugin was generated with [Cookiecutter][Cookiecutter] using [@napari][@napari]'s [cookiecutter-napari-plugin][cookiecutter-napari-plugin] template.
+This plugin is based on the [LabelProp](https://github.com/nathandecaux/labelprop) project.
+See also the [napari-labelprop-remote](https://github.com/nathandecaux/napari-labelprop-remote) plugin for remote computing.
 
-<!--
-Don't miss the full getting started guide to set up your new package:
-https://github.com/napari/cookiecutter-napari-plugin#getting-started
-
-and review the napari docs for plugin developers:
-https://napari.org/plugins/stable/index.html
--->
-
+---------------------------------------------------------------------------------
+---
 ## About
 
 See "Semi-automatic muscle segmentation in MR images using deep registration-based label propagation" paper : 
