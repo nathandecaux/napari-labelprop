@@ -33,6 +33,10 @@ To install this project :
     pip install napari['all']
     pip install git+https://github.com/nathandecaux/napari-labelprop.git
 
+In fresh Ubuntu 22.04 installs, it might require :
+
+    sudo apt install python3-pyqt5*
+    
 ## Usage
 
 Download [pretrained weights](https://raw.githubusercontent.com/nathandecaux/napari-labelprop/main/pretrained.ckpt).
