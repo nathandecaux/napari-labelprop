@@ -13,21 +13,15 @@
 ---------------------------------------------------------------------------------
 ---
 
-This [napari][napari] plugin was generated with [Cookiecutter][Cookiecutter] using [@napari][@napari]'s [cookiecutter-napari-plugin][cookiecutter-napari-plugin] template.
+This plugin is based on the [LabelProp](https://github.com/nathandecaux/labelprop) project.
+See also the [napari-labelprop-remote](https://github.com/nathandecaux/napari-labelprop-remote) plugin for remote computing.
 
-<!--
-Don't miss the full getting started guide to set up your new package:
-https://github.com/napari/cookiecutter-napari-plugin#getting-started
-
-and review the napari docs for plugin developers:
-https://napari.org/plugins/stable/index.html
--->
-
+---------------------------------------------------------------------------------
+---
 ## About
 
 See "Semi-automatic muscle segmentation in MR images using deep registration-based label propagation" paper : 
 
-[[Paper]![Paper](https://www.integrad.nl/assets/uploads/2016/02/cta-elsevier_logo-no_bg.png)](https://www.sciencedirect.com/science/article/pii/S0031320323002297?casa_token=r5FPBVXYXX4AAAAA:mStyUXb0i4lGqBmfF1j5fV1T9FuCMrpYfwh3lwQve2XAnzUBPZviAiFgMtH7lv6hdcWsA7yM) [[PDF]![PDF](https://www.ouvrirlascience.fr/wp-content/uploads/2018/12/HAL-3.png)](https://hal.science/hal-03945559/document)
 <p>
   <img src="https://github.com/nathandecaux/labelprop.github.io/raw/main/demo_cut.gif" width="600">
 </p>
@@ -39,6 +33,10 @@ To install this project :
     pip install napari['all']
     pip install git+https://github.com/nathandecaux/napari-labelprop.git
 
+In fresh Ubuntu 22.04 installs, it might require :
+
+    sudo apt install python3-pyqt5*
+    
 ## Usage
 
 Download [pretrained weights](https://raw.githubusercontent.com/nathandecaux/napari-labelprop/main/pretrained.ckpt).
