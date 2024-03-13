@@ -16,6 +16,8 @@ from napari.types import NewType
 from labelprop.napari_entry import propagate_from_ckpt,train, train_and_infer
 import sys
 import pathlib
+from psygnal import Signal, throttled, debounced
+
 from magicgui.widgets import FileEdit
 from magicgui.types import FileDialogMode
 from os import listdir
@@ -163,12 +165,12 @@ def magic_widget(img_layer: "napari.layers.Image"):
 # to indicate it should be wrapped as a magicgui to autogenerate
 # a widget
 
-def inference_function(image: "napari.layers.Image", labels_layer: "napari.layers.Labels", hints: "napari.layers.Labels", checkpoint: "napari.types.Path", z_axis: int, label_n : int,criteria='ncc',reduction='none',gpu=True) -> "napari.types.LayerDataTuple":
+def inference_function(image: "napari.layers.Image", labels_layer: "napari.layers.Labels", hints: "napari.layers.Labels",  checkpoint: "napari.types.Path", shape=(256,256), z_axis: int=0, label_n : int=0,criteria='ncc',reduction='none',gpu=True) -> "napari.types.LayerDataTuple":
     """Generate thresholded image.
 
     This function will be turned into a widget using `autogenerate: true`.
     """
-    shape=torch.load(checkpoint)['hyper_parameters']['shape'][0]
+    # shape=torch.load(checkpoint)['hyper_parameters']['shape'][0]
     device='cuda' if gpu else 'cpu'
     kwargs={'criteria':criteria,'reduction':reduction,'device':device}
     checkpoint=str(checkpoint)
@@ -199,13 +201,26 @@ class inference(FunctionGui):
         self.image.label='Image'
         self.labels_layer.label='Labels'
         self.hints.label='(Optional) Additional Scribbles'
-
+        self.shape.label='Slices shape'
         self.checkpoint.label='Checkpoint'
         self.z_axis.label='Propagation axis'
         self.label_n.label='Label to propagate (0 for all)'
         self.criteria.label='Weighting criteria'
         self.reduction.label='Reduction'
         self.gpu.label='Use GPU'
+
+        #Disable shape second dimension
+        self.shape[1].enabled=False
+        if self.image.value is not None:
+            self.update_shape()
+        #Add signal to update shape when image is changed (with a wait of 1s)
+        self.shape[0].changed.connect(self.update_second_dim)
+
+        #Change the possible increments of the shape
+        self.shape[0].step=16
+
+        self.image.changed.connect(self.update_shape)
+        self.z_axis.changed.connect(self.update_shape)
 
     def __call__(self):
         napari.utils.notifications.show_info('Inference started')
@@ -228,6 +243,31 @@ class inference(FunctionGui):
             self.reduction.hide()
         else:
             self.reduction.show()
+
+    def update_shape(self):
+        if self.image.value is not None:
+            img_shape=self.image.value.data.shape[:self.z_axis.value]+self.image.value.data.shape[self.z_axis.value+1:]
+            self.shape.value=tuple(img_shape)
+            self.shape[0].value=16*round(self.shape[0].value/16)
+            self.shape[1].value=16*round(self.shape[1].value/16)
+            self.img_shape=tuple(img_shape)
+        
+    def update_first_dim(self):
+        if self.image.value is not None:
+            
+            ratio=self.img_shape[0]/self.img_shape[1]
+            self.shape[0].value=int(ratio*self.shape[1].value)
+    
+    def update_second_dim(self):
+        if self.shape[0].value is not None and self.shape[0].value>10:
+            #Round first dim to the closest number divisible by 16
+            self.shape[0].value=16*round(self.shape[0].value/16)
+            if self.image.value is not None:
+                print(self.img_shape)
+                ratio=self.img_shape[1]/self.img_shape[0]
+                new_val=int(ratio*self.shape[0].value)
+                #Round to the closest number divisible by 8
+                self.shape[1].value=16*round(new_val/16)
 
 
 #@magicgui(call_button='run')#(checkpoint_output_dir={'mode': 'd'}, call_button='Run') , checkpoint_output_dir: pathlib.Path.home()
@@ -258,11 +298,14 @@ def training_function(image: "napari.layers.Image", labels_layer: "napari.layers
     if label_n==0: label_n='all'
     print(checkpoint_name)
     Y_up, Y_down, Y_fused = train_and_infer(
-        image.data, labels_data, pretrained_checkpoint,shape[0],max_epochs,z_axis,str(checkpoint_output_dir),checkpoint_name,hints=hints_data,pretraining=False,**kwargs)
+        image.data, labels_data, pretrained_checkpoint,shape,max_epochs,z_axis,str(checkpoint_output_dir),checkpoint_name,hints=hints_data,pretraining=False,**kwargs)
     torch.cuda.empty_cache()
     napari.utils.notifications.show_info('Training finished')
 
     return (Y_fused, {"name":"Propagated","affine": labels_layer.affine, "metadata": labels_layer.metadata}, "labels")
+
+
+
 class training(FunctionGui):
     def __init__(self,viewer: "napari.viewer.Viewer"):
         super().__init__(training_function,call_button=True,param_options={'criteria':{'choices':['distance','ncc']},'reduction':{'choices':['none','local_mean','mean']}, 'checkpoint_output_dir':{'widget_type':'FileEdit','mode': 'd'},'pretrained_checkpoint':{'filter':'*.ckpt'}})
@@ -284,8 +327,16 @@ class training(FunctionGui):
         self.gpu.label='Use GPU'
 
         #Disable shape second dimension
+
+        if self.image.value is not None:
+            self.update_shape()
+        #Add signal to update shape when image is changed (with a wait of 1s)
+
+        self.shape[0].changed.connect(self.update_second_dim)
+        #Change the possible increments of the shape
+        self.shape[0].step=16
         self.shape[1].enabled=False
-        self.shape[0].changed.connect(self.update_shape_2)
+        # self.shape[1].changed.connect(self.update_first_dim)
         self.image.changed.connect(self.update_shape)
         self.z_axis.changed.connect(self.update_shape)
         self.call_button.clicked.connect(self._on_click)
@@ -304,9 +355,26 @@ class training(FunctionGui):
         if self.image.value is not None:
             img_shape=self.image.value.data.shape[:self.z_axis.value]+self.image.value.data.shape[self.z_axis.value+1:]
             self.shape.value=tuple(img_shape)
+            self.shape[0].value=16*round(self.shape[0].value/16)
+            self.shape[1].value=16*round(self.shape[1].value/16)
+            self.img_shape=tuple(img_shape)
+        
+    def update_first_dim(self):
+        if self.image.value is not None:
+            
+            ratio=self.img_shape[0]/self.img_shape[1]
+            self.shape[0].value=int(ratio*self.shape[1].value)
     
-    def update_shape_2(self):
-        self.shape[1].value=self.shape[0].value
+    def update_second_dim(self):
+        if self.shape[0].value is not None and self.shape[0].value>10:
+            #Round first dim to the closest number divisible by 16
+            self.shape[0].value=16*round(self.shape[0].value/16)
+            if self.image.value is not None:
+                print(self.img_shape)
+                ratio=self.img_shape[1]/self.img_shape[0]
+                new_val=int(ratio*self.shape[0].value)
+                #Round to the closest number divisible by 8
+                self.shape[1].value=16*round(new_val/16)
 
 def filter_slices(labels: "napari.layers.Labels",slices : str,z_axis: int=0) -> "napari.types.LayerDataTuple":
     slices=slices.replace(' ','').split(',')
