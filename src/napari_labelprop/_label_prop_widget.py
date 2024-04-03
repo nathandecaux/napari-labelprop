@@ -208,7 +208,8 @@ class inference(FunctionGui):
         self.criteria.label='Weighting criteria'
         self.reduction.label='Reduction'
         self.gpu.label='Use GPU'
-
+        self.shape[0].max=4096
+        self.shape[1].max=4096
         #Disable shape second dimension
         self.shape[1].enabled=False
         if self.image.value is not None:
@@ -315,6 +316,9 @@ class training(FunctionGui):
         self.hints.label='(Optional) Additional Scribbles'
         self.pretrained_checkpoint.label='Pretrained checkpoint'
         self.shape.label='Slices shape'
+        #Increase max shape 
+        self.shape[0].max=4096
+        self.shape[1].max=4096
         self.z_axis.label='Propagation axis'
         self.label_n.label='Label to propagate (0 for all)'
         self.max_epochs.label='Max epochs'
